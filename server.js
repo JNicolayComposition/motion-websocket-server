@@ -89,24 +89,20 @@ wss.on("connection", ws => {
 
       if (data.type === "update") {
         updateRole(data);
-        broadcast();
       }
 
       if (data.type === "hello") {
         touchRole(data.role, data.source || "unknown");
-        broadcast();
       }
 
       if (data.type === "heartbeat") {
         touchRole(data.role, data.source || "unknown");
-        broadcast();
       }
 
       if (data.type === "reset") {
         state = Object.fromEntries(
           roles.map(role => [role, { ...defaultState }])
         );
-        broadcast();
       }
     } catch (e) {
       console.log("Invalid message:", e);
@@ -114,7 +110,7 @@ wss.on("connection", ws => {
   });
 });
 
-// WebSocket keepalive for connected browser/bridge sockets
+// Keep browser/bridge sockets alive, but do not broadcast here.
 setInterval(() => {
   wss.clients.forEach(ws => {
     if (ws.isAlive === false) {
@@ -128,7 +124,7 @@ setInterval(() => {
   });
 }, 15000);
 
-// Role timeout + gentle decay
+// Role timeout + gentle decay.
 setInterval(() => {
   const t = now();
 
@@ -145,8 +141,11 @@ setInterval(() => {
       };
     }
   }
-
-  broadcast();
 }, 1000);
+
+// Throttled broadcast: send current state at 12 FPS max.
+setInterval(() => {
+  broadcast();
+}, 1000 / 12);
 
 console.log(`WebSocket server running on port ${PORT}`);
